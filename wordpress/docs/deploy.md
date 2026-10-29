@@ -1,5 +1,7 @@
 # 盈圆 WordPress 生产部署手册
 
+如果要从空的 Ubuntu ECS 开始部署，请先按 [Linux ECS 从零部署步骤](linux-deploy-steps.md) 执行；本文保留完整的生产架构、运维和安全说明。
+
 ## 运行架构
 
 - `nginx`：公网入口，监听 80/443，转发 PHP 请求到 `wordpress`。
