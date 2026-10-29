@@ -23,6 +23,36 @@ test.describe('WordPress management', () => {
     await expect(page).toHaveURL(/wp-admin/);
     await expect(page.locator('body.wp-admin')).toBeVisible();
     await expect(page.locator('#wpbody')).toBeVisible();
+    await expect(page.locator('#toplevel_page_yy-site')).toBeVisible();
+    await expect(page.locator('#menu-dashboard')).toHaveCount(0);
+    await expect(page.locator('#menu-posts')).toHaveCount(0);
+    await expect(page.locator('#menu-media')).toHaveCount(0);
+    await expect(page.locator('#menu-comments')).toHaveCount(0);
+    await expect(page.locator('#menu-appearance')).toHaveCount(0);
+    await expect(page.locator('#menu-plugins')).toHaveCount(0);
+    await expect(page.locator('#menu-users')).toHaveCount(0);
+    await expect(page.locator('#menu-tools')).toHaveCount(0);
+    await expect(page.locator('#menu-settings')).toHaveCount(0);
+
+    await page.goto('/wp-admin/');
+    await expect(page).toHaveURL(/\/wp-admin\/admin\.php\?page=yy-site$/);
+
+    await page.goto('/wp-admin/admin.php?page=yy-home-settings');
+    const heroTitle = page.locator('#yy-setting-hero_title');
+    await expect(heroTitle).toBeVisible();
+    const originalHeroTitle = await heroTitle.inputValue();
+    const updatedHeroTitle = `${originalHeroTitle} ${Date.now()}`;
+
+    try {
+      await heroTitle.fill(updatedHeroTitle);
+      await page.locator('#submit').click();
+      await page.goto('/wp-admin/admin.php?page=yy-home-settings');
+      await expect(page.locator('#yy-setting-hero_title')).toHaveValue(updatedHeroTitle);
+    } finally {
+      await page.goto('/wp-admin/admin.php?page=yy-home-settings');
+      await page.locator('#yy-setting-hero_title').fill(originalHeroTitle);
+      await page.locator('#submit').click();
+    }
 
     await page.goto('/wp-admin/post-new.php');
     await expect(page.locator('body')).not.toContainText('Sorry, you are not allowed');
@@ -93,6 +123,8 @@ test.describe('WordPress management', () => {
     await page.goto('/wp-admin/plugins.php');
     await expect(page.locator('body')).toContainText(/not allowed|不允许/i);
     await page.goto('/wp-admin/options-general.php');
+    await expect(page.locator('body')).toContainText(/not allowed|不允许/i);
+    await page.goto('/wp-admin/users.php');
     await expect(page.locator('body')).toContainText(/not allowed|不允许/i);
     await page.goto('/wp-admin/admin.php?page=yy-site-settings');
     await expect(page.locator('body')).toContainText(/not allowed|不允许/i);

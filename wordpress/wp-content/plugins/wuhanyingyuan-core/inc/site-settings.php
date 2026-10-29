@@ -84,25 +84,19 @@ function yy_install_default_options(): void
     add_option('yy_home_settings', yy_home_setting_defaults());
 }
 
-function yy_register_settings_pages(): void
-{
-    add_menu_page('盈圆设置', '盈圆设置', 'manage_options', 'yy-site-settings', 'yy_render_site_settings_page', 'dashicons-admin-customizer', 59);
-    add_submenu_page('yy-site-settings', '全站设置', '全站设置', 'manage_options', 'yy-site-settings', 'yy_render_site_settings_page');
-    add_submenu_page('yy-site-settings', '首页设置', '首页设置', 'manage_options', 'yy-home-settings', 'yy_render_home_settings_page');
-}
-add_action('admin_menu', 'yy_register_settings_pages');
-
 function yy_register_site_settings(): void
 {
     register_setting('yy_site_settings_group', 'yy_site_settings', [
         'type' => 'array',
         'sanitize_callback' => 'yy_sanitize_site_settings',
         'default' => yy_site_setting_defaults(),
+        'capability' => 'manage_options',
     ]);
     register_setting('yy_home_settings_group', 'yy_home_settings', [
         'type' => 'array',
         'sanitize_callback' => 'yy_sanitize_home_settings',
         'default' => yy_home_setting_defaults(),
+        'capability' => 'yy_manage_homepage_settings',
     ]);
 }
 add_action('admin_init', 'yy_register_site_settings');
@@ -142,21 +136,39 @@ function yy_sanitize_option_group(mixed $input, array $defaults): array
 
 function yy_render_site_settings_page(): void
 {
-    yy_render_settings_form('yy_site_settings', 'yy_site_settings_group', yy_site_setting_defaults(), '全站设置');
+    yy_render_settings_form(
+        'yy_site_settings',
+        'yy_site_settings_group',
+        yy_site_setting_defaults(),
+        '全站设置',
+        'manage_options'
+    );
 }
 
 function yy_render_home_settings_page(): void
 {
-    yy_render_settings_form('yy_home_settings', 'yy_home_settings_group', yy_home_setting_defaults(), '首页设置');
+    yy_render_settings_form(
+        'yy_home_settings',
+        'yy_home_settings_group',
+        yy_home_setting_defaults(),
+        '首页设置',
+        'yy_manage_homepage_settings'
+    );
 }
 
 /**
  * @param array<string, mixed> $defaults
  */
-function yy_render_settings_form(string $option_name, string $group, array $defaults, string $title): void
+function yy_render_settings_form(
+    string $option_name,
+    string $group,
+    array $defaults,
+    string $title,
+    string $capability
+): void
 {
-    if (!current_user_can('manage_options')) {
-        return;
+    if (!current_user_can($capability)) {
+        wp_die('您没有权限访问此页面。', '', ['response' => 403]);
     }
 
     $saved = get_option($option_name, []);
@@ -166,8 +178,10 @@ function yy_render_settings_form(string $option_name, string $group, array $defa
     <div class="wrap">
         <h1><?php echo esc_html($title); ?></h1>
         <p>
-            <a href="<?php echo esc_url(admin_url('admin.php?page=yy-site-settings')); ?>">全站设置</a>
-            |
+            <?php if (current_user_can('manage_options')): ?>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=yy-site-settings')); ?>">全站设置</a>
+                |
+            <?php endif; ?>
             <a href="<?php echo esc_url(admin_url('admin.php?page=yy-home-settings')); ?>">首页设置</a>
         </p>
         <form action="<?php echo esc_url(admin_url('options.php')); ?>" method="post">

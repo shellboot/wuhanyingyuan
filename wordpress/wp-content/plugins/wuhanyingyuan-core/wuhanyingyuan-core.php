@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 盈圆站点核心
  * Description: 盈圆官网的内容类型、后台设置、新闻迁移与发布权限。
- * Version: 1.0.1
+ * Version: 1.1.0
  * Author: Wuhanyingyuan
  * Requires at least: 6.5
  * Requires PHP: 8.2
@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('YY_CORE_VERSION', '1.0.1');
+define('YY_CORE_VERSION', '1.1.0');
 define('YY_CORE_PATH', plugin_dir_path(__FILE__));
 
 require_once YY_CORE_PATH . 'inc/content-types.php';
@@ -20,6 +20,7 @@ require_once YY_CORE_PATH . 'inc/meta-fields.php';
 require_once YY_CORE_PATH . 'inc/site-settings.php';
 require_once YY_CORE_PATH . 'inc/admin-columns.php';
 require_once YY_CORE_PATH . 'inc/publisher-role.php';
+require_once YY_CORE_PATH . 'inc/admin-menu.php';
 require_once YY_CORE_PATH . 'inc/bootstrap.php';
 require_once YY_CORE_PATH . 'inc/legacy-import.php';
 

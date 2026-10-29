@@ -78,7 +78,10 @@ function yy_register_content_editor_role(): void
         'edit_others_published_posts',
         'delete_posts',
         'delete_published_posts',
+        'manage_categories',
         'upload_files',
+        'yy_manage_homepage_settings',
+        'yy_manage_publishers',
         ...yy_homepage_item_capabilities(),
     ]);
 }
@@ -93,7 +96,11 @@ function yy_register_administrator_homepage_capabilities(): void
         return;
     }
 
-    foreach (yy_homepage_item_capabilities() as $capability) {
+    foreach ([
+        'yy_manage_homepage_settings',
+        'yy_manage_publishers',
+        ...yy_homepage_item_capabilities(),
+    ] as $capability) {
         $role->add_cap($capability);
     }
 }

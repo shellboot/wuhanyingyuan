@@ -26,7 +26,10 @@ const requiredFiles = [
   'scripts/renew-cert.sh',
   'docs/deploy.md',
   'docs/publisher-integration.md',
+  'wp-content/plugins/wuhanyingyuan-core/inc/admin-menu.php',
   'tests/php/content-model-test.php',
+  'tests/php/admin-experience-test.php',
+  'tests/static/admin-menu-contract.mjs',
   'tests/static/entrypoint-test.sh',
   'tests/static/init-site-test.sh',
   'tests/static/setup-publisher-user-test.sh',
@@ -333,7 +336,7 @@ assert.match(contentTypes, /capability_type' => \['yy_homepage_item', 'yy_homepa
 assert.match(roles, /yy_homepage_item_capabilities/);
 assert.doesNotMatch(roles, /manage_options|install_plugins|switch_themes/);
 assert.match(plugin, /yy_core_sync_roles\(true\)/);
-assert.match(plugin, /1\.0\.1/);
+assert.match(plugin, /1\.1\.0/);
 assert.match(
   metaFields,
   /'auth_callback'\s*=>\s*static function \(\$allowed, \$meta_key, \$object_id, \$user_id, \$cap, \$caps\)\s*\{/,

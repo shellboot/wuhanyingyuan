@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "test": "playwright test",
-    "test:static": "node static/theme-contract.mjs && node static/deployment-contract.mjs && bash static/init-site-test.sh && bash static/setup-publisher-user-test.sh && bash static/entrypoint-test.sh && bash static/backup-test.sh && bash static/restore-test.sh && bash static/uploads-switch-test.sh",
+    "test:static": "node static/theme-contract.mjs && node static/deployment-contract.mjs && node static/admin-menu-contract.mjs && bash static/init-site-test.sh && bash static/setup-publisher-user-test.sh && bash static/entrypoint-test.sh && bash static/backup-test.sh && bash static/restore-test.sh && bash static/uploads-switch-test.sh",
     "test:public": "playwright test e2e/public.spec.ts",
     "test:admin": "playwright test e2e/admin.spec.ts",
     "test:publisher": "playwright test e2e/publisher.spec.ts",
