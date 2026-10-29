@@ -1,0 +1,27 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "preferredVersions": {
+    "php": "8.3",
+    "wp": "latest"
+  },
+  "features": {
+    "networking": true
+  },
+  "steps": [
+    {
+      "step": "activatePlugin",
+      "pluginPath": "wuhanyingyuan-core/wuhanyingyuan-core.php"
+    },
+    {
+      "step": "activateTheme",
+      "themeFolderName": "wuhanyingyuan"
+    },
+    {
+      "step": "runPHP",
+      "code": {
+        "filename": "bootstrap.php",
+        "content": "<?php\nrequire_once '/wordpress/wp-load.php';\nrequire_once ABSPATH . 'wp-admin/includes/user.php';\nrequire_once ABSPATH . 'wp-admin/includes/post.php';\n\nif (!function_exists('yy_bootstrap_site')) {\n    throw new RuntimeException('Wuhanyingyuan core plugin was not loaded.');\n}\n\nforeach (['hello-world' => 'post', 'sample-page' => 'page'] as $slug => $post_type) {\n    $default_posts = get_posts([\n        'post_type' => $post_type,\n        'post_status' => 'any',\n        'name' => $slug,\n        'posts_per_page' => -1,\n        'fields' => 'ids',\n    ]);\n    foreach ($default_posts as $default_post_id) {\n        wp_delete_post((int) $default_post_id, true);\n    }\n}\n\n$result = yy_bootstrap_site(true);\n$rewrite_rules = get_option('rewrite_rules');\n$has_news_rule = false;\nforeach ((array) $rewrite_rules as $pattern => $query) {\n    if (str_starts_with((string) $pattern, 'news/([^/]+)') && str_contains((string) $query, 'name=$matches[1]')) {\n        $has_news_rule = true;\n        break;\n    }\n}\nif (!$has_news_rule) {\n    throw new RuntimeException('Bootstrap did not persist the WordPress news permalink rule.');\n}\n\n$editor = get_user_by('login', 'editor');\nif (!$editor) {\n    $editor_id = wp_create_user('editor', 'editor-pass', 'editor@example.test');\n    if (is_wp_error($editor_id)) {\n        throw new RuntimeException($editor_id->get_error_message());\n    }\n    $editor = get_user_by('id', $editor_id);\n}\n$editor->set_role('yy_content_editor');\n\n$publisher = get_user_by('login', 'publisher');\nif (!$publisher) {\n    $publisher_id = wp_create_user('publisher', 'publisher-pass', 'publisher@example.test');\n    if (is_wp_error($publisher_id)) {\n        throw new RuntimeException($publisher_id->get_error_message());\n    }\n    $publisher = get_user_by('id', $publisher_id);\n}\n$publisher->set_role('yy_publisher');\n\nif (class_exists('WP_Application_Passwords')) {\n    $existing_passwords = WP_Application_Passwords::get_user_application_passwords($publisher->ID);\n    $known_app_password = 'playground-app-password';\n    $has_known_password = false;\n    foreach ($existing_passwords as $existing_password) {\n        if (($existing_password['name'] ?? '') === 'Playground') {\n            $has_known_password = true;\n            break;\n        }\n    }\n    if (!$has_known_password) {\n        add_filter('random_password', static function () {\n            return '0123456789abcdef01234567';\n        });\n        $created = WP_Application_Passwords::create_new_application_password(\n            $publisher->ID,\n            ['name' => 'Playground']\n        );\n        remove_all_filters('random_password');\n        if (is_wp_error($created)) {\n            throw new RuntimeException($created->get_error_message());\n        }\n        $known_app_password = $created[0];\n    }\n    update_option('yy_playground_app_password', $known_app_password, false);\n}\n\nupdate_option('yy_playground_bootstrap_result', $result, false);\n"
+      }
+    }
+  ]
+}

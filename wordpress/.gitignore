@@ -1,0 +1,17 @@
+.env
+.yy-operation.lock
+certs/
+backups/
+docker/nginx/tls.generated.conf
+logs/
+wp-content/uploads/
+tests/node_modules/
+tests/playwright-report/
+tests/test-results/
+tests/.auth/
+tests/screenshots/
+*.log
+*.sql
+*.sql.gz
+*.tar.gz
+.DS_Store
