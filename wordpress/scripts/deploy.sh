@@ -34,6 +34,7 @@ esac
 
 yy_load_env
 yy_validate_site_env
+yy_validate_meituan_env
 yy_require_vars CERTBOT_EMAIL
 yy_reject_placeholder DB_PASSWORD
 yy_reject_placeholder DB_ROOT_PASSWORD
@@ -48,26 +49,35 @@ if [[ "$check_only" == "true" ]]; then
 fi
 
 yy_require_docker
+yy_validate_meituan_project
 yy_compose config >/dev/null
 yy_log "Building the pinned WordPress image"
 yy_compose build wordpress
 
-if ! yy_certificate_exists; then
-  yy_log "No certificate found; starting the HTTP stack for ACME validation"
-  yy_compose_base up -d db wordpress nginx
+if ! yy_all_certificates_exist; then
+  if ! yy_service_is_running nginx; then
+    yy_log "Starting the HTTP stack for ACME validation"
+    yy_compose_base up -d db wordpress nginx
+  fi
   yy_wait_for_http || yy_die "The HTTP health check did not become ready"
 
-  yy_log "Requesting the first certificate for $DOMAIN"
-  yy_compose --profile tools run --rm certbot certonly \
-    --webroot \
-    --webroot-path=/var/www/certbot \
-    --email "$CERTBOT_EMAIL" \
-    --agree-tos \
-    --no-eff-email \
-    --non-interactive \
-    --domains "$DOMAIN"
+  for cert_domain in "$DOMAIN" "$MEITUAN_DOMAIN"; do
+    if ! yy_domain_certificate_exists "$cert_domain"; then
+      yy_log "Requesting a certificate for $cert_domain"
+      yy_compose --profile tools run --rm certbot certonly \
+        --webroot \
+        --webroot-path=/var/www/certbot \
+        --email "$CERTBOT_EMAIL" \
+        --agree-tos \
+        --no-eff-email \
+        --non-interactive \
+        --cert-name "$cert_domain" \
+        --domains "$cert_domain"
 
-  yy_certificate_exists || yy_die "Certbot completed without producing a certificate"
+      yy_domain_certificate_exists "$cert_domain" \
+        || yy_die "Certbot completed without producing a certificate for $cert_domain"
+    fi
+  done
 fi
 
 yy_render_tls
@@ -79,5 +89,5 @@ yy_compose up -d --remove-orphans
 yy_compose exec -T nginx nginx -s reload
 yy_compose ps
 
-yy_log "Deployment complete: https://$DOMAIN"
+yy_log "Deployment complete: https://$DOMAIN and https://$MEITUAN_DOMAIN"
 yy_log "Next: bash scripts/init-site.sh"

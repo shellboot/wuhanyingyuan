@@ -8,8 +8,10 @@ source "$SCRIPT_DIR/common.sh"
 
 yy_load_env
 yy_validate_site_env
+yy_validate_meituan_env
 yy_require_docker
-yy_certificate_exists || yy_die "No certificate exists for $DOMAIN"
+yy_all_certificates_exist \
+  || yy_die "Certificates do not exist for both $DOMAIN and $MEITUAN_DOMAIN"
 
 yy_compose --profile tools run --rm certbot renew \
   --webroot \

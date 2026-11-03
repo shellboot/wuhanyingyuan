@@ -69,12 +69,43 @@ services:
     networks:
       - backend
 
+  meituan:
+    image: node:22-alpine
+    logging: *default-logging
+    restart: unless-stopped
+    working_dir: /app
+    command: ["node", "server.js"]
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    volumes:
+      - ${MEITUAN_PROJECT_DIR:-../meituan-redirect}:/app:ro
+      - ${MEITUAN_PROJECT_DIR:-../meituan-redirect}/data:/app/data
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "const net=require('net');const socket=net.connect(3000,'127.0.0.1');socket.once('connect',()=>{socket.destroy();process.exit(0)});socket.once('error',()=>process.exit(1));setTimeout(()=>process.exit(1),3000).unref();"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - backend
+
   nginx:
     image: nginx:1.30.6-alpine
     logging: *default-logging
     restart: unless-stopped
     depends_on:
       wordpress:
+        condition: service_healthy
+      meituan:
         condition: service_healthy
     ports:
       - "80:80"

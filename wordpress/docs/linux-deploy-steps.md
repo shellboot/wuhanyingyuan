@@ -10,15 +10,16 @@ https://www.wuhanyingyuan.com
 
 ## 1. 准备域名和端口
 
-1. 将 `www.wuhanyingyuan.com` 的 A 记录指向 ECS 公网 IP。
+1. 将 `www.wuhanyingyuan.com` 和 `mt.wuhanyingyuan.com` 的 A 记录都指向 ECS 公网 IP。
 2. ECS 安全组只开放 `22`、`80`、`443`。
-3. 不要向公网开放 `3306`。
-4. 首次申请证书前，确认域名已经生效，并且公网可以访问服务器的 `80` 端口。
+3. 不要向公网开放 `3306` 或美团服务的 `3000` 端口。
+4. 首次申请证书前，确认两个域名已经生效，并且公网可以访问服务器的 `80` 端口。
 
 可在本地电脑检查 DNS：
 
 ```bash
 nslookup www.wuhanyingyuan.com
+nslookup mt.wuhanyingyuan.com
 ```
 
 ## 2. 登录服务器并安装依赖
@@ -138,6 +139,8 @@ nano .env
 SITE_URL=https://www.wuhanyingyuan.com
 DOMAIN=www.wuhanyingyuan.com
 CERTBOT_EMAIL=ops@your-domain.com
+MEITUAN_DOMAIN=mt.wuhanyingyuan.com
+MEITUAN_PROJECT_DIR=/opt/meituan-redirect
 
 DB_NAME=wordpress
 DB_USER=wordpress
@@ -161,6 +164,7 @@ NEWS_CATEGORY_SLUG=industry-news
 注意：
 
 - `SITE_URL` 必须严格等于 `https://` 加 `DOMAIN`，末尾不能有 `/`。
+- `/opt/meituan-redirect` 必须包含 `server.js` 和 `data/`；该目录由 Compose 挂载到容器。
 - 不要把 `.env` 上传到 Git 仓库、对象存储或聊天工具。
 - 如果手工设置包含空格、`#` 或 `$` 的密码，必须使用单引号包起来。
 
@@ -170,9 +174,10 @@ NEWS_CATEGORY_SLUG=industry-news
 
 ```bash
 dig +short A www.wuhanyingyuan.com
+dig +short A mt.wuhanyingyuan.com
 ```
 
-返回结果必须是当前 ECS 公网 IP。
+两个返回结果都必须是当前 ECS 公网 IP。
 
 检查 Compose 配置和 TLS 模板：
 
@@ -194,7 +199,7 @@ bash scripts/deploy.sh
 
 1. 构建并拉取固定版本镜像。
 2. 通过 HTTP 启动数据库、WordPress 和 Nginx。
-3. 使用 Let's Encrypt HTTP-01 验证域名。
+3. 使用 Let's Encrypt HTTP-01 分别验证主站和美团子域名。
 4. 生成并校验 `docker/nginx/tls.generated.conf`。
 5. 启动 80/443 生产入口。
 
@@ -202,8 +207,10 @@ bash scripts/deploy.sh
 
 ```bash
 dig +short A www.wuhanyingyuan.com
+dig +short A mt.wuhanyingyuan.com
 sudo ss -lntp | grep -E ':80|:443'
 curl -I http://www.wuhanyingyuan.com/
+curl -I http://mt.wuhanyingyuan.com/
 ```
 
 ## 7. 初始化 WordPress
@@ -285,16 +292,20 @@ docker compose \
 
 ```bash
 curl -fsS https://www.wuhanyingyuan.com/healthz
+curl -fsS https://mt.wuhanyingyuan.com/healthz
 curl -I http://www.wuhanyingyuan.com/
 curl -I https://www.wuhanyingyuan.com/
 curl -I https://www.wuhanyingyuan.com/wp-admin/
+curl -I http://mt.wuhanyingyuan.com/
+curl -I https://mt.wuhanyingyuan.com/admin
 ```
 
 预期结果：
 
-- `db`、`wordpress`、`nginx` 为 `healthy` 或 `running`。
+- `db`、`wordpress`、`meituan`、`nginx` 为 `healthy` 或 `running`。
 - 80 端口跳转到 HTTPS。
 - HTTPS 首页和 `/wp-admin/` 返回 `200` 或登录页面。
+- 美团子域名健康检查返回 `ok`，`/admin` 可以显示管理页。
 - 管理后台可以登录，且没有被 C 端主题接管。
 - 创建一篇草稿后，匿名访问文章详情返回 404；发布后新闻列表可见。
 - 外部发布工具可以使用 `API_KEY`、`API_PASS` 创建和更新新闻。
@@ -305,7 +316,7 @@ curl -I https://www.wuhanyingyuan.com/wp-admin/
 docker compose \
   -f docker-compose.yml \
   -f docker-compose.prod.yml \
-  logs --tail=200 nginx wordpress db
+  logs --tail=200 nginx wordpress db meituan
 ```
 
 ## 10. 配置定时任务
@@ -370,6 +381,7 @@ bash scripts/init-site.sh
 - Docker 命名卷 `db_data`
 - Docker 命名卷 `uploads_data`
 - Docker 命名卷 `wordpress_data`
+- `/opt/meituan-redirect/data/`
 
 严禁执行 `docker compose down -v`，该命令会删除数据库和上传文件。
 

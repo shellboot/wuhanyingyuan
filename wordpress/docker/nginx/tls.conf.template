@@ -2,7 +2,7 @@ limit_req_zone $binary_remote_addr zone=wp_login:10m rate=10r/m;
 
 server {
     listen 80;
-    server_name ${DOMAIN};
+    server_name ${DOMAIN} ${MEITUAN_DOMAIN};
 
     location = /healthz {
         access_log off;
@@ -16,7 +16,7 @@ server {
     }
 
     location / {
-        return 301 https://${DOMAIN}$request_uri;
+        return 301 https://$host$request_uri;
     }
 }
 
@@ -84,5 +84,42 @@ server {
 
     location = /wp-config.php {
         deny all;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${MEITUAN_DOMAIN};
+
+    server_tokens off;
+    client_max_body_size 1m;
+
+    ssl_certificate /etc/letsencrypt/live/${MEITUAN_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${MEITUAN_DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    include /etc/nginx/snippets/security-headers.conf;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location / {
+        proxy_pass http://meituan:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 30s;
     }
 }

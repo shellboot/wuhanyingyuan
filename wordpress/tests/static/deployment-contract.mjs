@@ -79,7 +79,29 @@ assert.doesNotMatch(prodCompose, /tls\.conf:\/etc\/nginx/);
 assert.match(gitignore, /^docker\/nginx\/tls\.generated\.conf$/m);
 assert.match(baseCompose, /image: mariadb:11\.4\.13/);
 assert.match(baseCompose, /image: nginx:1\.30\.6-alpine/);
+assert.match(baseCompose, /image: node:22-alpine/);
 assert.match(baseCompose, /image: wordpress:cli-2\.12\.0-php8\.3/);
+assert.match(
+  baseCompose,
+  /\$\{MEITUAN_PROJECT_DIR:-\.\.\/meituan-redirect\}:\/app:ro/,
+  'Meituan source must be mounted read-only from the configured host path'
+);
+assert.match(
+  baseCompose,
+  /\$\{MEITUAN_PROJECT_DIR:-\.\.\/meituan-redirect\}\/data:\/app\/data/,
+  'Meituan runtime data must remain writable on the host'
+);
+assert.match(baseCompose, /command: \["node", "server\.js"\]/);
+assert.match(
+  baseCompose,
+  /net\.connect\(3000,\s*'127\.0\.0\.1'\)/,
+  'The Meituan health check must only require its HTTP port to be listening'
+);
+assert.match(
+  baseCompose,
+  /meituan:\s*\r?\n\s+condition: service_healthy/,
+  'Nginx must wait for the Meituan service health check'
+);
 const wpcliService = baseCompose.match(
   /^  wpcli:\r?\n([\s\S]*?)(?=^  \S|^networks:)/m
 )?.[1];
@@ -97,7 +119,7 @@ assert.match(
 );
 assert.equal(
   (baseCompose.match(/logging: \*default-logging/g) || []).length,
-  4,
+  5,
   'All long-running Compose services must use the shared log rotation policy'
 );
 assert.match(
@@ -148,6 +170,24 @@ assert.match(phpFpm, /fastcgi_param HTTP_AUTHORIZATION \$http_authorization;/);
 assert.match(tlsTemplate, /listen 443 ssl;/);
 assert.match(tlsTemplate, /location \^~ \/\.well-known\/acme-challenge\//);
 assert.match(tlsTemplate, /\$\{DOMAIN\}/);
+assert.match(tlsTemplate, /server_name \$\{DOMAIN\} \$\{MEITUAN_DOMAIN\};/);
+assert.match(tlsTemplate, /\$\{MEITUAN_DOMAIN\}/);
+assert.match(
+  tlsTemplate,
+  /live\/\$\{MEITUAN_DOMAIN\}\/fullchain\.pem[\s\S]*live\/\$\{MEITUAN_DOMAIN\}\/privkey\.pem/,
+  'The Meituan hostname must use its own certificate'
+);
+assert.doesNotMatch(
+  tlsTemplate,
+  /proxy_pass http:\/\/127\.0\.0\.1:3000/,
+  'Docker Nginx must proxy to the Meituan Compose service'
+);
+assert.match(tlsTemplate, /proxy_pass http:\/\/meituan:3000;/);
+assert.equal(
+  (tlsTemplate.match(/return 200 "ok\\n";/g) || []).length,
+  3,
+  'Both public hosts must have an Nginx-owned health endpoint'
+);
 for (const [name, config] of [
   ['HTTP Nginx config', defaultNginx],
   ['TLS Nginx config', tlsTemplate],
@@ -170,6 +210,16 @@ assert.match(deploy, /yy_render_tls/);
 assert.match(deploy, /yy_compose build wordpress/);
 assert.match(
   deploy,
+  /for cert_domain in "\$DOMAIN" "\$MEITUAN_DOMAIN"; do/,
+  'Deployment must check and request both certificates independently'
+);
+assert.match(
+  deploy,
+  /--cert-name "\$cert_domain"/,
+  'Each domain must keep a stable certificate directory'
+);
+assert.match(
+  deploy,
   /yy_compose run --rm --no-deps nginx nginx -t/,
   'TLS configuration must be validated before recreating the public Nginx service'
 );
@@ -180,8 +230,14 @@ assert.ok(
 );
 assert.match(
   common,
-  /live\/\$DOMAIN\/fullchain\.pem[\s\S]*live\/\$DOMAIN\/privkey\.pem/,
-  'Certificate readiness must require both the chain and private key'
+  /live\/\$domain\/fullchain\.pem[\s\S]*live\/\$domain\/privkey\.pem/,
+  'Certificate readiness must require both the chain and private key for a domain'
+);
+assert.match(common, /yy_validate_meituan_env\(\)/);
+assert.match(common, /yy_all_certificates_exist\(\)/);
+assert.ok(
+  common.includes(String.raw`-e "s|\${MEITUAN_DOMAIN}|$MEITUAN_DOMAIN|g"`),
+  'TLS rendering must replace the Meituan domain placeholder'
 );
 assert.match(
   common,

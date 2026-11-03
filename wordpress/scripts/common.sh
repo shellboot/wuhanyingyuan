@@ -56,6 +56,28 @@ yy_validate_site_env() {
     || yy_die "SITE_URL must be exactly https://$DOMAIN without a trailing slash"
 }
 
+yy_validate_meituan_env() {
+  yy_require_vars MEITUAN_DOMAIN MEITUAN_PROJECT_DIR
+
+  [[ "$MEITUAN_DOMAIN" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] \
+    || yy_die "MEITUAN_DOMAIN is not a valid hostname: $MEITUAN_DOMAIN"
+  [[ "$MEITUAN_DOMAIN" != "$DOMAIN" ]] \
+    || yy_die "MEITUAN_DOMAIN must be different from DOMAIN"
+}
+
+yy_validate_meituan_project() {
+  local project_dir="$MEITUAN_PROJECT_DIR"
+
+  if [[ "$project_dir" != /* ]]; then
+    project_dir="$YY_ROOT/${project_dir#./}"
+  fi
+
+  [[ -f "$project_dir/server.js" ]] \
+    || yy_die "MEITUAN_PROJECT_DIR does not contain server.js: $project_dir"
+  [[ -d "$project_dir/data" ]] \
+    || yy_die "MEITUAN_PROJECT_DIR does not contain a data directory: $project_dir"
+}
+
 yy_require_docker() {
   command -v docker >/dev/null 2>&1 || yy_die "Docker is not installed"
   docker compose version >/dev/null 2>&1 || yy_die "Docker Compose v2 is required"
@@ -108,6 +130,14 @@ yy_wp() {
   yy_compose --profile tools run --rm -T wpcli wp "$@"
 }
 
+yy_service_is_running() {
+  local service="$1"
+  local services
+
+  services="$(yy_compose ps --services --status running)"
+  grep -Fxq "$service" <<<"$services"
+}
+
 yy_render_tls() {
   local target="${1:-$YY_ROOT/docker/nginx/tls.generated.conf}"
   local template="$YY_ROOT/docker/nginx/tls.conf.template"
@@ -116,10 +146,13 @@ yy_render_tls() {
   [[ -f "$template" ]] || yy_die "Missing TLS template: $template"
   mkdir -p "$(dirname -- "$target")"
   temp_file="$(mktemp "${target}.tmp.XXXXXX")"
-  sed "s|\${DOMAIN}|$DOMAIN|g" "$template" >"$temp_file"
+  sed \
+    -e "s|\${DOMAIN}|$DOMAIN|g" \
+    -e "s|\${MEITUAN_DOMAIN}|$MEITUAN_DOMAIN|g" \
+    "$template" >"$temp_file"
 
-  # shellcheck disable=SC2016 # Match the literal placeholder in the rendered file.
-  if grep -Fq '${DOMAIN}' "$temp_file"; then
+  # shellcheck disable=SC2016 # Match the literal placeholders in the rendered file.
+  if grep -Fq '${DOMAIN}' "$temp_file" || grep -Fq '${MEITUAN_DOMAIN}' "$temp_file"; then
     rm -f "$temp_file"
     yy_die "TLS template still contains unresolved domain placeholders"
   fi
@@ -127,9 +160,20 @@ yy_render_tls() {
   mv -f "$temp_file" "$target"
 }
 
+yy_domain_certificate_exists() {
+  local domain="$1"
+
+  [[ -s "$YY_ROOT/certs/live/$domain/fullchain.pem" ]] \
+    && [[ -s "$YY_ROOT/certs/live/$domain/privkey.pem" ]]
+}
+
 yy_certificate_exists() {
-  [[ -s "$YY_ROOT/certs/live/$DOMAIN/fullchain.pem" ]] \
-    && [[ -s "$YY_ROOT/certs/live/$DOMAIN/privkey.pem" ]]
+  yy_domain_certificate_exists "$DOMAIN"
+}
+
+yy_all_certificates_exist() {
+  yy_domain_certificate_exists "$DOMAIN" \
+    && yy_domain_certificate_exists "$MEITUAN_DOMAIN"
 }
 
 yy_wait_for_http() {

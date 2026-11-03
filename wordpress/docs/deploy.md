@@ -7,6 +7,7 @@
 - `nginx`：公网入口，监听 80/443，转发 PHP 请求到 `wordpress`。
 - `wordpress`：PHP-FPM 与 WordPress 运行容器。
 - `db`：仅在内网提供 MariaDB，不映射宿主机端口。
+- `meituan`：读取 `/opt/meituan-redirect` 的美团中转与管理页 Node 服务，仅通过 Compose 内网访问。
 - `wpcli`：按需运行的运维工具容器。
 - `certbot`：按需运行，负责首次签发和后续续期证书。
 - `wordpress_data`、`uploads_data`、`db_data`：Docker 命名卷，保存 WordPress 核心、配置、上传文件和数据库。
@@ -29,8 +30,10 @@ https://www.wuhanyingyuan.com/wp-admin/
 3. 安装 `flock`（Ubuntu 的 `util-linux` 包）和 GNU `tar`，并确认 `flock --help`、`tar --version` 可执行。
 4. ECS 安全组只开放公网 `22`、`80`、`443`；不要开放 `3306`。
 5. 将 `www.wuhanyingyuan.com` 的 A 记录指向 ECS 公网 IP。
-6. 如需支持裸域 `wuhanyingyuan.com`，在 DNS 服务商处把它 301 到 `https://www.wuhanyingyuan.com/`。
-7. 确保域名可以完成 HTTP-01 验证，首次部署前 `80` 端口必须能从公网访问。
+6. 将 `mt.wuhanyingyuan.com` 的 A 记录指向同一 ECS 公网 IP。
+7. 如需支持裸域 `wuhanyingyuan.com`，在 DNS 服务商处把它 301 到 `https://www.wuhanyingyuan.com/`。
+8. 确保两个域名都可以完成 HTTP-01 验证，首次部署前 `80` 端口必须能从公网访问。
+9. 美团项目应位于 `/opt/meituan-redirect`，并包含 `server.js` 和可写的 `data/`。
 
 ## 首次部署
 
@@ -43,6 +46,8 @@ chmod 600 .env
 编辑 `.env`，至少替换以下值：
 
 - `CERTBOT_EMAIL`
+- `MEITUAN_DOMAIN`
+- `MEITUAN_PROJECT_DIR`
 - `DB_PASSWORD`
 - `DB_ROOT_PASSWORD`
 - `ADMIN_PASSWORD`
@@ -74,10 +79,19 @@ bash scripts/deploy.sh
 
 1. 先构建固定版本的 WordPress 镜像。
 2. 以 HTTP 启动 Nginx。
-3. 通过 HTTP-01 为 `DOMAIN` 申请证书，并确认 `fullchain.pem` 和 `privkey.pem` 都存在。
+3. 通过 HTTP-01 分别为 `DOMAIN` 和 `MEITUAN_DOMAIN` 检查、申请证书，并确认 `fullchain.pem` 和 `privkey.pem` 都存在。
 4. 用真实域名生成 `docker/nginx/tls.generated.conf`。
 5. 在一次性 Nginx 容器中执行 `nginx -t`；校验失败时不会重建公网入口。
 6. 启动 80/443 生产入口并重载 Nginx。
+
+美团中转页和管理后台分别通过以下地址访问：
+
+```text
+https://mt.wuhanyingyuan.com/
+https://mt.wuhanyingyuan.com/admin?key=<原管理密码>
+```
+
+Nginx 通过 Compose 服务名 `meituan:3000` 访问应用，不映射该服务的宿主机端口。迁移前若 `/opt/meituan-redirect` 由 systemd 或 PM2 运行，必须先停止原进程，再启动 Compose，避免两个进程同时写入 `data/`。
 
 `tls.generated.conf`、`certs/`、`.env` 和备份文件均已加入 `.gitignore`。
 
