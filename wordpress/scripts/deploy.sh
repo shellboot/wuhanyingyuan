@@ -86,6 +86,8 @@ yy_log "Validating the generated TLS configuration"
 yy_compose run --rm --no-deps nginx nginx -t
 yy_log "Starting or recreating the production containers"
 yy_compose up -d --remove-orphans
+yy_log "Recreating Nginx to attach the freshly generated TLS configuration"
+yy_compose up -d --force-recreate nginx
 yy_compose exec -T nginx nginx -s reload
 yy_compose ps
 

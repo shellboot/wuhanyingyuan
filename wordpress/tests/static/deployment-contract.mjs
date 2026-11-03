@@ -237,6 +237,11 @@ assert.match(
   /yy_compose run --rm --no-deps nginx nginx -t/,
   'TLS configuration must be validated before recreating the public Nginx service'
 );
+assert.match(
+  deploy,
+  /yy_compose up -d --force-recreate nginx/,
+  'Nginx must be recreated so replacement config files receive a fresh bind mount'
+);
 assert.match(deploy, /yy_compose exec -T nginx nginx -s reload/);
 assert.ok(
   deploy.indexOf('yy_compose build wordpress') < deploy.indexOf('yy_compose_base up'),
