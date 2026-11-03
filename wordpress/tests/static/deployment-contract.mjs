@@ -182,7 +182,21 @@ assert.doesNotMatch(
   /proxy_pass http:\/\/127\.0\.0\.1:3000/,
   'Docker Nginx must proxy to the Meituan Compose service'
 );
-assert.match(tlsTemplate, /proxy_pass http:\/\/meituan:3000;/);
+assert.match(
+  tlsTemplate,
+  /resolver 127\.0\.0\.11 valid=10s ipv6=off;/,
+  'Nginx must resolve the Meituan service when the config loads'
+);
+assert.match(
+  tlsTemplate,
+  /proxy_pass \$meituan_upstream\$request_uri;/,
+  'The Meituan backend must be resolved at request time'
+);
+assert.doesNotMatch(
+  tlsTemplate,
+  /proxy_pass http:\/\/meituan:3000;/,
+  'Static proxy targets fail nginx -t when the Meituan container is absent'
+);
 assert.equal(
   (tlsTemplate.match(/return 200 "ok\\n";/g) || []).length,
   3,
