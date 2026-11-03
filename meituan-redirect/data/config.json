@@ -1,0 +1,13 @@
+{
+  "admin_password": "mt2026",
+  "account_id": "1034018514",
+  "user_action_set_id": "1225347100",
+  "action_type": "VIEW_PAGE",
+  "client_id": "",
+  "client_secret": "",
+  "base_url": "https://mt.wuhanyingyuan.com",
+  "default_target": "https://click.meituan.com/t?t=1&c=2&p=I6aRI71zNhl9",
+  "sharecode": "",
+  "gdt_key": "1225347100",
+  "report_mode": "js"
+}

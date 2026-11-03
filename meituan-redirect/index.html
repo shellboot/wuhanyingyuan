@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>美团优惠专区</title>
+<script>
+/* 腾讯广告转化代码（腾讯后台生成，勿改） */
+!function(g,d,t,e,v,n,s){if(g.gdt)return;v=g.gdt=function(){v.tk?v.tk.apply(v,arguments):v.queue.push(arguments)};v.sv='1.0';v.bt=0;v.queue=[];n=d.createElement(t);n.async=!0;n.src=e;s=d.getElementsByTagName(t)[0];s.parentNode.insertBefore(n,s);}(window,document,'script','//mp.zhls.qq.com/sdk/dmp-sdk-js/gdtevent.min.js');
+gdt('init','__GDT_KEY__');
+/* 关键页面访问 = PAGE_VIEW；腾讯生成的模板此处为空，补上行为类型才能上报 */
+gdt('track','PAGE_VIEW');
+</script>
+<noscript>
+<img height="1" width="1" style="display:none" src="https://api.datanexus.qq.com/data-nexus-cgi/pixel?user_action_set_id=__GDT_KEY__&action_type=&noscript=1"/>
+</noscript>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #fff7f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    padding: 24px;
+  }
+  .logo {
+    width: 64px; height: 64px; border-radius: 16px;
+    background: #ffc300;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px; font-weight: 700; color: #fff;
+    margin-bottom: 20px;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 10px; }
+  p { font-size: 14px; color: #999; margin-bottom: 28px; }
+  .spinner {
+    width: 28px; height: 28px;
+    border: 3px solid #ffd9d9;
+    border-top-color: #ff4d4f;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .manual { margin-top: 32px; font-size: 13px; color: #bbb; }
+  .manual a { color: #ff4d4f; text-decoration: none; }
+</style>
+</head>
+<body>
+  <div class="logo">美</div>
+  <h1>正在为您打开美团优惠页面</h1>
+  <p>好券好店，一键直达</p>
+  <div class="spinner"></div>
+  <div class="manual" id="manual" style="display:none">
+    若未自动跳转，请 <a id="manualLink" href="#">点此进入</a>
+  </div>
+
+<script>
+/* =========================================================
+ * 美团联盟中转落地页（API 回传版）
+ * 链路：腾讯广告点击(带gdt_vid) -> 本页上报 -> 服务端调腾讯MKT API回传
+ *       -> 自动跳转美团联盟链接
+ * ========================================================= */
+
+/* ---------- 目标美团联盟链接（只允许美团/点评域名，防滥用） ---------- */
+var DEFAULT_TARGET = "https://click.meituan.com/t?t=1&c=2&p=I6aRI71zNhl9";
+
+function getTarget() {
+  try {
+    var u = new URLSearchParams(location.search).get("u");
+    if (u) {
+      var host = new URL(decodeURIComponent(u)).hostname;
+      if (/(^|\.)meituan\.com$/.test(host) || /(^|\.)dianping\.com$/.test(host)) {
+        return decodeURIComponent(u);
+      }
+    }
+  } catch (e) {}
+  return DEFAULT_TARGET;
+}
+
+/* ---------- 捕获腾讯广告点击 ID 并上报给服务端 ---------- */
+function captureClickId() {
+  try {
+    var params = new URLSearchParams(location.search);
+    return params.get("gdt_vid") || params.get("qz_gdt") || params.get("click_id") || "";
+  } catch (e) { return ""; }
+}
+
+var clickId = captureClickId();
+
+try {
+  if (clickId) {
+    localStorage.setItem("gdt_click_id", clickId);
+    localStorage.setItem("gdt_click_time", String(Date.now()));
+  }
+  /* 无论是否带 click_id 都上报一次，便于在后台排查流量问题 */
+  fetch("__REPORT_URL__", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    keepalive: true,
+    body: JSON.stringify({
+      click_id: clickId,
+      url: location.href,
+      referer: document.referrer || ""
+    })
+  }).catch(function () {});
+} catch (e) {}
+
+/* ---------- 延时跳转：给上报留出时间 ---------- */
+var target = getTarget();
+setTimeout(function () {
+  window.location.replace(target);
+}, 1500);
+
+/* 兜底手动跳转链接 */
+document.getElementById("manualLink").href = target;
+document.getElementById("manual").style.display = "block";
+</script>
+</body>
+</html>

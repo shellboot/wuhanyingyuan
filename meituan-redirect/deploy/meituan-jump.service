@@ -1,0 +1,19 @@
+# 可选：不用 pm2 时，用 systemd 守护
+# 安装：cp meituan-jump.service /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now meituan-jump
+
+[Unit]
+Description=Meituan Jump Redirect Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/meituan-redirect
+ExecStart=/usr/bin/node /opt/meituan-redirect/server.js
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target
